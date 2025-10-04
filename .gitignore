@@ -29,3 +29,6 @@ Debug
 Release
 TestResults
 
+build/
+out/
+.vs/

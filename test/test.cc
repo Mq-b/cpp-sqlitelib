@@ -9,6 +9,7 @@ using namespace sqlitelib;
 TEST_CASE("Sqlite Test", "[general]") {
   Sqlite db("./test.db");
   REQUIRE(db.is_open());
+  db.setPassworld("123555");
 
   db.prepare(R"(
     CREATE TABLE IF NOT EXISTS people (

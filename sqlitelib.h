@@ -8,7 +8,7 @@
 #ifndef _CPPSQLITELIB_HTTPSLIB_H_
 #define _CPPSQLITELIB_HTTPSLIB_H_
 
-#include <sqlite3.h>
+#include <sqlite3mc.h>
 
 #include <cstring>
 #include <memory>
@@ -282,6 +282,18 @@ class Sqlite {
       sqlite3_close(db_);
       db_ = nullptr;
     }
+  }
+
+  void setPassworld(const std::string& passworld) const {
+      int rc = sqlite3_key(db_, passworld.c_str(), static_cast<int>(passworld.size()));
+      if (rc != SQLITE_OK) {
+          throw std::runtime_error("设置密码错误");
+      }
+
+      rc = sqlite3_exec(db_, "SELECT count(*) FROM sqlite_master;", nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+          throw std::runtime_error("密码验证错误");
+      }
   }
 
   Sqlite(Sqlite&& rhs) : db_(rhs.db_) {}
