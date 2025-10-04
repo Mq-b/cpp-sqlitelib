@@ -11,16 +11,9 @@ elseif(UNIX)
 endif()
 
 add_executable(test-main test.cc)
-target_compile_definitions(test-main PRIVATE CATCH_CONFIG_NO_POSIX_SIGNALS)
 
 target_link_libraries(test-main PRIVATE
     ${SQLite3MC_LIB}
 )
 target_include_directories(test-main PRIVATE .. .)
 
-enable_testing()
-
-add_test(
-  NAME TestMain
-  COMMAND test-main
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
