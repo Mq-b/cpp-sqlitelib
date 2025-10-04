@@ -17,7 +17,7 @@ int main() {
         }
 
         // 可以设置密码
-        db.setPassworld("123555");
+        db.setPassword("123555");
 
         // 建表
         db.prepare(R"(

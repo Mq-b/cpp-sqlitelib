@@ -284,7 +284,7 @@ class Sqlite {
     }
   }
 
-  void setPassworld(const std::string& passworld) const {
+  void setPassword(const std::string& passworld) const {
       int rc = sqlite3_key(db_, passworld.c_str(), static_cast<int>(passworld.size()));
       if (rc != SQLITE_OK) {
           throw std::runtime_error("设置密码错误");
