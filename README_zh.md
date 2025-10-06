@@ -125,6 +125,81 @@ for (const auto& x: db.execute_cursor<std::string>("SELECT name FROM people")) {
 }
 ```
 
+## 加密数据库
+
+本库支持使用 [sqlite3mc](https://github.com/utelle/SQLite3MultipleCiphers) 的加密数据库，支持多种加密算法：
+
+- `aes128cbc`: AES 128 位 CBC - 无 HMAC (wxSQLite3)
+- `aes256cbc`: AES 256 位 CBC - 无 HMAC (wxSQLite3)
+- `chacha20`: ChaCha20 - Poly1305 HMAC (sqleet，默认)
+- `sqlcipher`: AES 256 位 CBC - SHA1/SHA256/SHA512 HMAC (SQLCipher)
+- `rc4`: RC4 (System.Data.SQLite)
+- `ascon128`: Ascon-128 v1.2
+- `aegis128`: AEGIS-128
+- `aegis256`: AEGIS-256
+
+### 设置密码
+
+```cpp
+db.setPassword("your_password");
+```
+
+### 设置加密算法
+
+```cpp
+db.setCipher("aes256cbc");  // 设置为 AES 256 CBC
+db.setPassword("your_password");
+```
+
+### 设置 KDF 迭代次数
+
+```cpp
+db.setKdfIter(10000);  // 设置 KDF 迭代次数
+db.setPassword("your_password");
+```
+
+**重要提示**：重新打开加密数据库时，必须在调用 `setPassword()` 之前设置相同的加密算法和 KDF 参数。
+
+### 设置遗留模式
+
+```cpp
+db.setLegacy(1);  // 启用遗留模式以保持兼容性
+db.setPassword("your_password");
+```
+
+## 编译
+
+本库需要安装 [sqlite3mc](https://github.com/utelle/SQLite3MultipleCiphers)。
+
+### 安装 sqlite3mc
+
+从 [GitHub](https://github.com/utelle/SQLite3MultipleCiphers) 下载并编译 sqlite3mc。
+
+对于 Ubuntu/Debian：
+```bash
+# 克隆并编译 sqlite3mc
+git clone https://github.com/utelle/SQLite3MultipleCiphers.git
+cd SQLite3MultipleCiphers
+make
+sudo make install
+```
+
+### 编译库
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## 测试
+
+```bash
+cd build
+make test
+```
+
 ## 许可证
 
 MIT 许可证 (© 2025 Mq-b)

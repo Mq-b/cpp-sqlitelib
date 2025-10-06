@@ -296,6 +296,30 @@ class Sqlite {
       }
   }
 
+  void setCipher(const std::string& cipher) const {
+      std::string pragma = "PRAGMA cipher = '" + cipher + "';";
+      int rc = sqlite3_exec(db_, pragma.c_str(), nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+          throw std::runtime_error("设置加密算法错误: " + cipher);
+      }
+  }
+
+  void setKdfIter(int iter) const {
+      std::string pragma = "PRAGMA kdf_iter = " + std::to_string(iter) + ";";
+      int rc = sqlite3_exec(db_, pragma.c_str(), nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+          throw std::runtime_error("设置 KDF 迭代次数错误: " + std::to_string(iter));
+      }
+  }
+
+  void setLegacy(int legacy) const {
+      std::string pragma = "PRAGMA legacy = " + std::to_string(legacy) + ";";
+      int rc = sqlite3_exec(db_, pragma.c_str(), nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+          throw std::runtime_error("设置 legacy 模式错误: " + std::to_string(legacy));
+      }
+  }
+
   Sqlite(Sqlite&& rhs) : db_(rhs.db_) {}
 
   ~Sqlite() {

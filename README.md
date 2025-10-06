@@ -124,6 +124,81 @@ for (const auto& x: db.execute_cursor<std::string>("SELECT name FROM people")) {
 }
 ```
 
+## Encrypted Database
+
+This library supports encrypted databases using [sqlite3mc](https://github.com/utelle/SQLite3MultipleCiphers), which supports multiple encryption algorithms:
+
+- `aes128cbc`: AES 128 Bit CBC - No HMAC (wxSQLite3)
+- `aes256cbc`: AES 256 Bit CBC - No HMAC (wxSQLite3)
+- `chacha20`: ChaCha20 - Poly1305 HMAC (sqleet, default)
+- `sqlcipher`: AES 256 Bit CBC - SHA1/SHA256/SHA512 HMAC (SQLCipher)
+- `rc4`: RC4 (System.Data.SQLite)
+- `ascon128`: Ascon-128 v1.2
+- `aegis128`: AEGIS-128
+- `aegis256`: AEGIS-256
+
+### Set Password
+
+```cpp
+db.setPassword("your_password");
+```
+
+### Set Encryption Algorithm
+
+```cpp
+db.setCipher("aes256cbc");  // Set to AES 256 CBC
+db.setPassword("your_password");
+```
+
+### Set KDF Iterations
+
+```cpp
+db.setKdfIter(10000);  // Set KDF iterations
+db.setPassword("your_password");
+```
+
+**Important**: When reopening an encrypted database, you must set the same cipher and KDF parameters before calling `setPassword()`.
+
+### Set Legacy Mode
+
+```cpp
+db.setLegacy(1);  // Enable legacy mode for compatibility
+db.setPassword("your_password");
+```
+
+## Build
+
+This library requires [sqlite3mc](https://github.com/utelle/SQLite3MultipleCiphers) to be installed.
+
+### Install sqlite3mc
+
+Download and compile sqlite3mc from [GitHub](https://github.com/utelle/SQLite3MultipleCiphers).
+
+For Ubuntu/Debian:
+```bash
+# Clone and build sqlite3mc
+git clone https://github.com/utelle/SQLite3MultipleCiphers.git
+cd SQLite3MultipleCiphers
+make
+sudo make install
+```
+
+### Build the library
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## Test
+
+```bash
+cd build
+make test
+```
+
 ## License
 
 MIT license (© 2025 Mq-b)
