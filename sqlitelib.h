@@ -5,8 +5,8 @@
 //  The Boost Software License 1.0
 //
 
-#ifndef _CPPSQLITELIB_HTTPSLIB_H_
-#define _CPPSQLITELIB_HTTPSLIB_H_
+#ifndef CPPSQLITELIB_HTTPSLIB_H_
+#define CPPSQLITELIB_HTTPSLIB_H_
 
 #include <sqlite3mc.h>
 
@@ -20,9 +20,7 @@
 
 namespace sqlitelib {
 
-namespace {
-
-void* enabler;
+namespace detail {
 
 inline void verify(int rc, int expected = SQLITE_OK) {
   if (rc != expected) {
@@ -34,25 +32,26 @@ template <typename T>
 T get_column_value(sqlite3_stmt* stmt, int col) {}
 
 template <>
-int get_column_value<int>(sqlite3_stmt* stmt, int col) {
+inline int get_column_value<int>(sqlite3_stmt* stmt, int col) {
   return sqlite3_column_int(stmt, col);
 }
 
 template <>
-double get_column_value<double>(sqlite3_stmt* stmt, int col) {
+inline double get_column_value<double>(sqlite3_stmt* stmt, int col) {
   return sqlite3_column_double(stmt, col);
 }
 
 template <>
-std::string get_column_value<std::string>(sqlite3_stmt* stmt, int col) {
+inline  std::string get_column_value<std::string>(sqlite3_stmt* stmt,
+                                                  int col) {
   auto val = std::string(sqlite3_column_bytes(stmt, col), 0);
   memcpy(&val[0], sqlite3_column_text(stmt, col), val.size());
   return val;
 }
 
 template <>
-std::vector<char> get_column_value<std::vector<char>>(sqlite3_stmt* stmt,
-                                                      int col) {
+inline std::vector<char> get_column_value<std::vector<char>>(
+  sqlite3_stmt* stmt, int col) {
   auto val = std::vector<char>(sqlite3_column_bytes(stmt, col));
   memcpy(&val[0], sqlite3_column_blob(stmt, col), val.size());
   return val;
@@ -80,30 +79,32 @@ template <typename Arg>
 void bind_value(sqlite3_stmt* stmt, int col, Arg val) {}
 
 template <>
-void bind_value<int>(sqlite3_stmt* stmt, int col, int val) {
+inline void bind_value<int>(sqlite3_stmt* stmt, int col, int val) {
   verify(sqlite3_bind_int(stmt, col, val));
 }
 
 template <>
-void bind_value<double>(sqlite3_stmt* stmt, int col, double val) {
+inline void bind_value<double>(sqlite3_stmt* stmt, int col, double val) {
   verify(sqlite3_bind_double(stmt, col, val));
 }
 
 template <>
-void bind_value<std::string>(sqlite3_stmt* stmt, int col, std::string val) {
+inline void bind_value<std::string>(sqlite3_stmt* stmt, int col,
+                                    std::string val) {
   verify(sqlite3_bind_text(stmt, col, val.data(), static_cast<int>(val.size()),
                            SQLITE_TRANSIENT));
 }
 
 template <>
-void bind_value<const char*>(sqlite3_stmt* stmt, int col, const char* val) {
+inline void bind_value<const char*>(sqlite3_stmt* stmt, int col,
+                                    const char* val) {
   verify(sqlite3_bind_text(stmt, col, val, static_cast<int>(strlen(val)),
                            SQLITE_TRANSIENT));
 }
 
 template <>
-void bind_value<std::vector<char>>(sqlite3_stmt* stmt, int col,
-                                   std::vector<char> val) {
+inline void bind_value<std::vector<char>>(sqlite3_stmt* stmt, int col,
+                                          std::vector<char> val) {
   verify(sqlite3_bind_blob(stmt, col, val.data(), static_cast<int>(val.size()),
                            SQLITE_TRANSIENT));
 }
@@ -121,13 +122,14 @@ struct ValueType<false, T, Rest...> {
   typedef std::tuple<T, Rest...> type;
 };
 
-};  // namespace
+};  // namespace detail
 
 template <typename T, typename... Rest>
 class Iterator {
  public:
   typedef std::forward_iterator_tag iterator_category;
-  typedef typename ValueType<!sizeof...(Rest), T, Rest...>::type value_type;
+  typedef typename detail::ValueType<!sizeof...(Rest), T, Rest...>::type
+    value_type;
   typedef std::ptrdiff_t difference_type;
   typedef value_type* pointer;
   typedef value_type& reference;
@@ -136,16 +138,17 @@ class Iterator {
 
   Iterator(sqlite3_stmt* stmt) : stmt_(stmt), id_(-1) { operator++(); }
 
-  template <int RestSize = sizeof...(Rest),
-            typename std::enable_if<(RestSize == 0)>::type*& = enabler>
+  template <std::size_t RestSize = sizeof...(Rest),
+            typename std::enable_if<(RestSize == 0), int>::type = 0>
   value_type operator*() const {
-    return get_column_value<T>(stmt_, 0);
+    return detail::get_column_value<T>(stmt_, 0);
   }
 
-  template <int RestSize = sizeof...(Rest),
-            typename std::enable_if<(RestSize != 0)>::type*& = enabler>
+  template <std::size_t RestSize = sizeof...(Rest),
+            typename std::enable_if<(RestSize != 0), int>::type = 0>
   value_type operator*() const {
-    return ColumnValues<1 + sizeof...(Rest), T, Rest...>::get(stmt_, 0);
+    return detail::ColumnValues<1 + sizeof...(Rest), T, Rest...>::get(
+      stmt_, 0);
   }
 
   Iterator& operator++() {
@@ -174,7 +177,7 @@ class Iterator {
 };
 
 inline void sqlite3_stmt_deleter(sqlite3_stmt* stmt) {
-  verify(sqlite3_finalize(stmt));
+  detail::verify(sqlite3_finalize(stmt));
 };
 
 template <typename T, typename... Rest>
@@ -202,7 +205,9 @@ class Statement {
   Statement(sqlite3* db, const char* query)
       : stmt_(new_sqlite3_stmt(db, query), sqlite3_stmt_deleter) {}
 
-  Statement(Statement&& rhs) : stmt_(rhs.stmt_) { rhs.stmt_ = nullptr; }
+  Statement(Statement&& rhs) noexcept : stmt_(rhs.stmt_) {
+    rhs.stmt_ = nullptr;
+  }
 
   Statement() = delete;
   Statement(Statement& rhs) = default;
@@ -210,24 +215,25 @@ class Statement {
 
   template <typename... Args>
   Statement<T, Rest...>& bind(const Args&... args) {
-    verify(sqlite3_reset(stmt_.get()));
+    detail::verify(sqlite3_reset(stmt_.get()));
     bind_values(1, args...);
     return *this;
   }
 
   template <
       typename U = T,
-      typename std::enable_if<std::is_same<U, void>::value>::type*& = enabler,
+      typename std::enable_if<std::is_same<U, void>::value, int>::type = 0,
       typename... Args>
   void execute(const Args&... args) {
     bind(args...);
-    verify(sqlite3_step(stmt_.get()), SQLITE_DONE);
+    detail::verify(sqlite3_step(stmt_.get()), SQLITE_DONE);
   }
 
   template <
       typename U = T,
-      typename std::enable_if<!std::is_same<U, void>::value>::type*& = enabler,
-      typename V = typename ValueType<!sizeof...(Rest), T, Rest...>::type,
+      typename std::enable_if<!std::is_same<U, void>::value, int>::type = 0,
+      typename V =
+        typename detail::ValueType<!sizeof...(Rest), T, Rest...>::type,
       typename... Args>
   std::vector<V> execute(const Args&... args) {
     std::vector<V> ret;
@@ -250,12 +256,12 @@ class Statement {
   }
 
  private:
-  Statement& operator=(const Statement& rhs);
+  Statement& operator=(const Statement&) = delete;
 
   sqlite3_stmt* new_sqlite3_stmt(sqlite3* db, const char* query) {
     sqlite3_stmt* p = nullptr;
-    verify(sqlite3_prepare(db, query, static_cast<int>(strlen(query)), &p,
-                           nullptr));
+    detail::verify(sqlite3_prepare(db, query,
+                           static_cast<int>(strlen(query)), &p, nullptr));
     return p;
   }
 
@@ -263,7 +269,7 @@ class Statement {
 
   template <typename Arg, typename... ArgRest>
   void bind_values(int col, const Arg& val, const ArgRest&... rest) {
-    bind_value(stmt_.get(), col, val);
+    detail::bind_value(stmt_.get(), col, val);
     bind_values(col + 1, rest...);
   }
 
@@ -296,7 +302,9 @@ class Sqlite {
       }
   }
 
-  Sqlite(Sqlite&& rhs) : db_(rhs.db_) {}
+  Sqlite(Sqlite&& rhs) noexcept : db_(rhs.db_) {
+    rhs.db_ = nullptr;
+  }
 
   ~Sqlite() {
     if (db_) {
@@ -322,10 +330,10 @@ class Sqlite {
 
   template <
       typename T, typename... Rest,
-      typename std::enable_if<!std::is_same<T, void>::value>::type*& = enabler,
+      typename std::enable_if<!std::is_same<T, void>::value, int>::type = 0,
       typename... Args>
-  std::vector<typename ValueType<!sizeof...(Rest), T, Rest...>::type> execute(
-      const char* query, const Args&... args) {
+  std::vector<typename detail::ValueType<!sizeof...(Rest), T, Rest...>::type>
+    execute(const char* query, const Args&... args) {
     return prepare<T, Rest...>(query).execute(args...);
   }
 
